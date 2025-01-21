@@ -1,0 +1,190 @@
+---
+title: "WAlMART SALES ANALYSIS"
+author: "Esther Mordi"
+date: "2025-01-08"
+output: html_document
+---
+
+##INTRODUCTION
+
+This analysis explores Walmart sales data, focusing on trends, outliers, and the impact of holiday on sales. Key steps include data exploration, cleaning, visualization and correlation analysis.
+
+
+##ANALYSIS GOAL
+
+The goals for this analysis are as follows:
+
+- Familiarize with the dataset and it's structure.
+- Perform data cleaning and preparation for analysis.
+- Explore and analyze the data to uncover trends, relationship, and insights.
+- Data visualization
+
+
+##DATA SOURCE
+
+The data used in this analysis is sourced from [Kaggle](https://www.kaggle.com/datasets/mikhail1681/walmart-sales).
+
+
+```{r load-libraries, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, results = 'markup', fig.show = 'asis')
+
+#Loading libraries
+library(tidyverse)
+
+#Importing dataset
+walmart_sales <- read_csv("C:/Users/esthe/OneDrive/Documents/PORTFOLIOPROJECTS/walmart_sales.csv")
+```
+
+
+##DATA EXPLORATION and CLEANING
+```{r data exploration}
+
+view(walmart_sales)
+head(walmart_sales)
+str(walmart_sales)
+summary(walmart_sales)
+
+#checking for missing values
+sum(is.na(walmart_sales))
+
+#converting Holiday_Flag to a factor
+walmart_sales$Holiday_Flag <- as.factor(walmart_sales$Holiday_Flag) 
+class(walmart_sales$Holiday_Flag)
+
+#correcting date inconsistency
+walmart_sales$Date <- gsub("-", "/", walmart_sales$Date) 
+walmart_sales$Date <- as.Date(walmart_sales$Date, format="%d/%m/%Y")
+sum(is.na(walmart_sales$Date))
+
+view(walmart_sales$Date)
+head(walmart_sales$Date) 
+
+#checking for duplicates
+duplicates <- walmart_sales[duplicated(walmart_sales), ]
+duplicates
+
+```
+
+```{r investigating outliers}
+
+#checking for outliers
+boxplot(walmart_sales$Weekly_Sales, main = "weekly sales", horizontal = TRUE) 
+plot(walmart_sales$Date, walmart_sales$Weekly_Sales,
+     type = "l",
+     main = "weekly sales over time",
+     xlab = "Date",
+     ylab = "weekly sales",
+     col = "blue",
+     lwd = 2)
+
+#The boxplot shows that there is a significant number of outliers on the higher end of weekly sales (above the upper whisker). These outliers indicate a few weeks where sales were significantly high compared to the rest of the data. The majority of the data lies within the interquartile range, but the right side spread reveals extreme values that's further analysed below.
+
+#investigating outliers
+max_sales <- max(walmart_sales$Weekly_Sales)
+outlier_date <- walmart_sales$Date[walmart_sales$Weekly_Sales == max_sales] #max sales and corresponding date
+print(paste("The highest Weekly Sales are:", max_sales, "on", outlier_date))
+
+#plot with the outlier highlighted
+plot(walmart_sales$Date, walmart_sales$Weekly_Sales, 
+     type = "l", 
+     main = "Weekly Sales Over Time", 
+     xlab = "Date", 
+     ylab = "Weekly Sales", 
+     col = "blue")
+
+points(outlier_date, max_sales, 
+       col = "red", 
+       pch = 19, 
+       cex = 1.5)
+
+#The chart above shows that the highlighted outlier corresponds to a sharp and isolated spike in weekly sales towards the end of the year 2010 and another spike is also seen toward the end of the year 2011, further analysis shows us the specific outlier date with maximum sales to be 2010-12-24, a day to Christmas. so, it's safe to conclude that spike in sales was caused by an holiday shopping factor which means this outlier is crucial to our analysis and so it was kept.
+```
+
+
+##BASIC ANALYSIS
+```{r sale trends}
+
+#sales trends by the year
+ggplot(walmart_sales, aes(x = Date, y = Weekly_Sales, fill = factor(Holiday_Flag))) +
+  geom_col() +
+  labs(
+    title = "Weekly Sales Over Time",
+    x = "Date",
+    y = "Weekly Sales",
+    fill = "Holiday Flag"
+  ) +
+  theme_minimal()
+```
+
+```{r monthly analysis}
+
+#Average sales by month
+walmart_sales$Month <- format(walmart_sales$Date, "%m") 
+
+avg_sales_by_month <- aggregate(Weekly_Sales ~ Month, data = walmart_sales, FUN = mean)
+print(avg_sales_by_month)
+
+plot(as.numeric(avg_sales_by_month$Month), avg_sales_by_month$Weekly_Sales, 
+     type = "o", 
+     col = "darkgreen", 
+     main = "Average Weekly Sales by Month", 
+     xlab = "Month", 
+     ylab = "Average Sales")
+```
+
+```{r holiday impact}
+
+#Impact of Holidays on sales
+avg_sales <- aggregate(Weekly_Sales ~ Holiday_Flag, data = walmart_sales, FUN = mean)
+print(avg_sales)
+
+barplot(avg_sales$Weekly_Sales, 
+        names.arg = c("Non-Holiday", "Holiday"), 
+        col = c("lightblue", "pink"), 
+        main = "Average Weekly Sales: Holiday vs Non-Holiday", 
+        xlab = "Holiday Flag", 
+        ylab = "Average Sales")
+```
+
+```{r checking for correlations}
+
+#Correlation Analysis
+
+library(knitr)
+
+correlation_matrix <- cor(walmart_sales[, c("Weekly_Sales", "Temperature", "Fuel_Price", "CPI", "Unemployment")])
+kable(correlation_matrix, caption = "Correlation Matrix of Walmart Sales Data")
+
+#Most correlation are weak, suggesting that no variable strongly influences another. The only significant correlation is between CPI and Unemployment which have a moderately negative relationship, suggesting that when Unemployment decreases, CPI tends to increase and vise-versa.
+
+#Weekly sales appears to be weakly influenced by all variables, meaning there might not be strong external predictors for sales, or the relationship might be non-linear.
+```
+
+
+
+##CONCLUSION
+
+#Key Insights
+
+- **Holiday-driven sales spikes:**  Sales data highlight a strong seasonal pattern, with significant spikes during the holidays, particularly in December. Holidays consistently outperform non-holiday periods emphasizing their important role in driving revenue.
+
+- **Seasonal trends:** Monthly trends reveal a gradual increase in sales throughout the year, peaking in December, while non-holiday sales remain steady but lower.
+
+- **Impact of outliers:** Outliers such as December 24, 2010 show increased shopping activities during specific events, confirming that holiday shopping seasons are the primary drivers of sales growth.
+
+- **Non-holiday stability:** Non-holiday sales are relatively stable but lower. While the business performs well during the holiday season, the gap between holiday and non-holiday periods suggests untapped opportunities. 
+
+- **Customer behavior:** Consumer spending is heavily tied to holiday promotions and events, suggesting the need for strategic planning around these times.  
+
+
+#Recommendations 
+
+- **Leverage holidays:** To capitalize on the holiday season, the business should focus on targeted marketing campaigns, discounts, and promotions leading up to major holidays. Proper inventory and staffing management will ensure smooth operations during these peak periods.
+
+- **Boost off-peak sales:** Introduce loyalty programs, flash sales, or mid-year promotions to increase non-holiday sales. Consider creating new events or themes for non-peak periods.  
+- **Plan seasonally:** Offering seasonal or limited-edition products can help capture consumer interest and maximize holiday sales. Also, tailor inventory to high-performing items during key periods.
+
+- **Adopt data-driven strategies:** Regularly analyze sales trends and customer behavior to identify new opportunities and personalize marketing efforts.  
+
+- **Diversify revenue streams:** In the long term, diversifying product offerings and expanding into e-commerce channels can help reduce reliance on holiday sales and create opportunities for sustained growth. 
+
